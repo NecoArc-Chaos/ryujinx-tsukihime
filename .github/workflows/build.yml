@@ -55,11 +55,10 @@ jobs:
 
       - name: Publish macOS Ryujinx
         run: |
-          # 赋予脚本执行权限
-          chmod +x ./distribution/macos/create_macos_build_ava.sh
+          # 核心修复：给 macos 目录下所有的脚本都加上执行权限
+          chmod +x ./distribution/macos/*.sh
           
-          # 执行龙神官方的 macOS 构建脚本
-          # 该脚本内部会自动处理：编译 -> 创建 Ryujinx.app 结构 -> 放入二进制文件 -> 签名 -> 打包成 .tar.gz
+          # 执行构建脚本
           ./distribution/macos/create_macos_build_ava.sh . publish_tmp publish ./distribution/macos/entitlements.xml "${{ env.RYUJINX_BASE_VERSION }}" "${{ steps.git_short_hash.outputs.result }}" "${{ matrix.configuration }}" "-p:ExtraDefineConstants=DISABLE_UPDATER"
 
       - name: Upload Ryujinx artifact
