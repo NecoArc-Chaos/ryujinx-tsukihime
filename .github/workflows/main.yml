@@ -1,0 +1,9 @@
+name: 执行龙神构建
+
+on:
+  workflow_dispatch: # 手动触发
+
+jobs:
+  run-build:
+    uses: ./.github/workflows/build.yml # 调用当前目录下的构建脚本
+    secrets: inherit # 继承密钥（用于 macOS 签名等）
