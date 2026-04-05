@@ -1,25 +1,35 @@
-name: Build PR
+name: Ryujinx 月姬R 修复版发布
 
 on:
-  pull_request:
-    branches: [ master ]
-    paths:
-      - '**'
-      - '!.github/**'
-      - '!*.yml'
-      - '!*.config'
-      - '!*.md'
-      - '.github/workflows/*.yml'
+  workflow_dispatch: # 手动触发
 
 permissions:
-  pull-requests: write
-  checks: write
-
-concurrency:
-  group: pr-checks-${{ github.event.number }}
-  cancel-in-progress: true
+  contents: write
 
 jobs:
-  pr_build:
+  # 调用你现有的 build 工作流
+  build:
     uses: ./.github/workflows/build.yml
     secrets: inherit
+
+  # 创建 Release 并上传
+  create-release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v1.1.0-${{ github.run_number }}
+          name: "Ryujinx Custom Build (月姬R 修复) #${{ github.run_number }}"
+          body: "基于最新源码编译，已应用 SizeCalculator.cs 贴图修正补丁。"
+          files: |
+            ./artifacts/**/*.zip
+            ./artifacts/**/*.tar.gz
+            ./artifacts/**/*.AppImage
+

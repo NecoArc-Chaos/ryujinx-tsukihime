@@ -140,6 +140,7 @@ jobs:
       - name: Install rcodesign
         run: |
           mkdir -p $HOME/.bin
+          # 下载用于 macOS 签名的工具
           gh release download -R indygreg/apple-platform-rs -O apple-codesign.tar.gz -p 'apple-codesign-*-x86_64-unknown-linux-musl.tar.gz'
           tar -xzvf apple-codesign.tar.gz --wildcards '*/rcodesign' --strip-components=1
           rm apple-codesign.tar.gz
@@ -153,17 +154,23 @@ jobs:
         run: echo "result=$(git rev-parse --short "${{ github.sha }}")" >> $GITHUB_OUTPUT
 
       - name: Change config filename
+        # 增加了 workflow_dispatch 支持
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         run: sed -r --in-place 's/\%\%RYUJINX_CONFIG_FILE_NAME\%\%/PRConfig\.json/g;' src/Ryujinx.Common/ReleaseInformation.cs
         shell: bash
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
 
       - name: Publish macOS Ryujinx
         run: |
+          # --- 关键修复：赋予脚本可执行权限 ---
+          chmod +x ./distribution/macos/create_macos_build_ava.sh
+          
+          # 执行构建脚本
           ./distribution/macos/create_macos_build_ava.sh . publish_tmp publish ./distribution/macos/entitlements.xml "${{ env.RYUJINX_BASE_VERSION }}" "${{ steps.git_short_hash.outputs.result }}" "${{ matrix.configuration }}" "-p:ExtraDefineConstants=DISABLE_UPDATER"
 
       - name: Upload Ryujinx artifact
+        # 确保手动触发时也会上传
+        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
           name: ryujinx-${{ matrix.configuration }}-${{ env.RYUJINX_BASE_VERSION }}+${{ steps.git_short_hash.outputs.result }}-macos_universal
           path: "publish/*.tar.gz"
-        if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
