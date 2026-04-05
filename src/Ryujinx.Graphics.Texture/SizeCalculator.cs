@@ -67,7 +67,9 @@ namespace Ryujinx.Graphics.Texture
                     mipGobBlocksInY >>= 1;
                 }
 
-                if (level > 0 && d <= (mipGobBlocksInZ >> 1) && mipGobBlocksInZ != 1)
+                // 核心修改 1：移除 level > 0 限制，并将 if 改为 while
+                // 确保每一层 Mipmap 都能根据当前深度 d 正确缩减 mipGobBlocksInZ
+                while (d <= (mipGobBlocksInZ >> 1) && mipGobBlocksInZ != 1)
                 {
                     mipGobBlocksInZ >>= 1;
                 }
@@ -84,12 +86,12 @@ namespace Ryujinx.Graphics.Texture
                 widthInGobs = BitUtils.AlignUp(widthInGobs, alignment);
 
                 int totalBlocksOfGobsInZ = BitUtils.DivRoundUp(d, mipGobBlocksInZ);
-                int totalBlocksOfGobsInY = BitUtils.DivRoundUp(BitUtils.DivRoundUp(h, GobHeight), mipGobBlocksInY);
+                int totalBlocksOfGobsY = BitUtils.DivRoundUp(BitUtils.DivRoundUp(h, GobHeight), mipGobBlocksInY);
 
                 int robSize = widthInGobs * mipGobBlocksInY * mipGobBlocksInZ * GobSize;
 
                 mipOffsets[level] = layerSize;
-                sliceSizes[level] = totalBlocksOfGobsInY * robSize;
+                sliceSizes[level] = totalBlocksOfGobsY * robSize;
                 levelSizes[level] = totalBlocksOfGobsInZ * sliceSizes[level];
 
                 layerSizeAligned += levelSizes[level];
@@ -98,7 +100,7 @@ namespace Ryujinx.Graphics.Texture
                 {
                     int gobSize = mipGobBlocksInY * GobSize;
 
-                    int sliceSize = totalBlocksOfGobsInY * widthInGobs * gobSize;
+                    int sliceSize = totalBlocksOfGobsY * widthInGobs * gobSize;
 
                     int baseOffset = layerSize;
 
@@ -116,9 +118,6 @@ namespace Ryujinx.Graphics.Texture
 
                     if (gobRemainderZ != 0 && level == levels - 1)
                     {
-                        // The slice only covers up to the end of this slice's depth, rather than the full aligned size.
-                        // Avoids size being too large on partial views of 3d textures.
-
                         levelSizes[level] -= gobSize * (mipGobBlocksInZ - gobRemainderZ);
 
                         if (sliceSizes[level] > levelSizes[level])
@@ -180,8 +179,6 @@ namespace Ryujinx.Graphics.Texture
 
         public static SizeInfo GetLinearTextureSize(int stride, int height, int blockHeight)
         {
-            // Non-2D or mipmapped linear textures are not supported by the Switch GPU,
-            // so we only need to handle a single case (2D textures without mipmaps).
             int totalSize = stride * BitUtils.DivRoundUp(height, blockHeight);
 
             return new SizeInfo(totalSize);
@@ -253,7 +250,6 @@ namespace Ryujinx.Graphics.Texture
                 alignment = GobStride / bytesPerPixel;
             }
 
-            // Height has already been divided by block height, so pass it as 1.
             (gobBlocksInY, gobBlocksInZ) = GetMipGobBlockSizes(height, depth, 1, gobBlocksInY, gobBlocksInZ);
 
             int blockOfGobsHeight = gobBlocksInY * GobHeight;
@@ -298,7 +294,9 @@ namespace Ryujinx.Graphics.Texture
                 gobBlocksInY >>= 1;
             }
 
-            while (level-- > 0 && depth <= (gobBlocksInZ >> 1) && gobBlocksInZ != 1)
+            // 核心修改 2：移除 level-- > 0 限制
+            // 确保深度缩减逻辑不受传入 level 计数的干扰，直接根据深度 depth 缩减到最小合法块大小
+            while (depth <= (gobBlocksInZ >> 1) && gobBlocksInZ != 1)
             {
                 gobBlocksInZ >>= 1;
             }
